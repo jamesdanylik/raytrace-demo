@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <vector>
 using namespace std;
 
@@ -240,10 +241,12 @@ void loadedSceneInfo()
 // -------------------------------------------------------------------
 // Ray tracing
 
-vec4 trace(const Ray& ray)
+vec4 trace(const Ray& ray, int step)
 {
-    // TODO: implement your ray tracing routine here.
-    return vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	vec4 local_c, reflected_c, transmitted;
+	vec4 pixelColor = g_bgcolor;
+
+	return pixelColor;
 }
 
 vec4 getDir(int ix, int iy)
@@ -260,7 +263,7 @@ void renderPixel(int ix, int iy)
     Ray ray;
     ray.origin = vec4(0.0f, 0.0f, 0.0f, 1.0f);
     ray.dir = getDir(ix, iy);
-    vec4 color = trace(ray);
+    vec4 color = trace(ray, 1);
     setColor(ix, iy, color);
 }
 
@@ -306,9 +309,11 @@ void saveFile()
         for (int x = 0; x < g_width; x++)
             for (int i = 0; i < 3; i++)
                 buf[y*g_width*3+x*3+i] = (unsigned char)(((float*)g_colors[y*g_width+x])[i] * 255.9f);
-    
-    // TODO: change file name based on input file name.
-    savePPM(g_width, g_height, "output.ppm", buf);
+
+	char *filename = new char[g_output.length() + 1];
+	strcpy(filename, g_output.c_str());
+    savePPM(g_width, g_height, filename, buf);
+	delete[] filename;
     delete[] buf;
 }
 
