@@ -52,6 +52,23 @@ struct Light
 	vec4 color;
 };
 
+enum IntersectionT
+{
+	LIGHT_SOURCE, NO_INTERSECTION, SPHERE
+};
+
+struct Intersection
+{
+	Intersection() {};
+	~Intersection() {};
+
+	IntersectionT type;
+	union {
+		Light light;
+		Sphere sphere;
+	};
+};
+
 // Global Variables ///////////////////////////////////////////////////////////
 
 vector<vec4> g_colors; //Actual pixel colors?
@@ -232,21 +249,71 @@ void loadedSceneInfo()
 
 }
 
+vec4 phong(const Ray& ray, vec4 r)
+{
+	return vec4(0.0,0.0,0.0,0.0);
+}
+
+vec4 reflect(const Ray& ray)
+{
+	return vec4(0.0,0.0,0.0,0.0);
+}
+
+vec4 transmit(const Ray& ray)
+{
+	return vec4(0.0,0.0,0.0,0.0);
+}
+
+vec4 normal(const vec4& q, const Sphere& sphere)
+{
+	return vec4(0.0,0.0,0.0,0.0);
+}
+
 // -------------------------------------------------------------------
 // Intersection routine
 
-// TODO: add your ray-sphere intersection routine here.
-
+vec4 intersect(const Ray& ray, Intersection& intersection)
+{
+	return vec4(0.0,0.0,0.0,0.0);
+}
 
 // -------------------------------------------------------------------
 // Ray tracing
 
 vec4 trace(const Ray& ray, int step)
 {
-	vec4 local_c, reflected_c, transmitted;
-	vec4 pixelColor = g_bgcolor;
+	vec4 local_c, reflected_c, transmitted_c;
+	vec4 point_q, r, t;
+	vec4 normal_n;
+	
+	vec4 pixelColor;
 
-	return pixelColor;
+	int max = 4;
+	if ( step > max ) return (g_bgcolor);
+
+	Intersection status;
+	status.type = NO_INTERSECTION;
+	point_q = intersect(ray, status);
+
+	if ( status.type == LIGHT_SOURCE ) return(status.light.color);
+	if ( status.type == NO_INTERSECTION ) return(g_bgcolor);
+
+	Ray rt_r;
+	normal_n = normal(point_q, status.sphere);
+	rt_r.origin = point_q; rt_r.dir = normal_n;
+	r = reflect(rt_r);
+	t = transmit(rt_r);
+
+
+	Ray reflect_r, transmit_r;
+	reflect_r.origin = point_q; reflect_r.dir = r;
+	transmit_r.origin = point_q; transmit_r.dir = t;
+	vec4 local, reflected, transmitted;
+	local = phong(rt_r, r);
+	reflected = trace(reflect_r, step+1);
+	transmitted = trace(transmit_r, step+1);
+
+	return(local + transmitted + reflected);
 }
 
 vec4 getDir(int ix, int iy)
