@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <cstring>
+#include <algorithm>
 #include <vector>
 using namespace std;
 
@@ -274,7 +275,10 @@ vec4 transmit(const Ray& ray)
 
 vec4 normal(const vec4& q, const Sphere& sphere)
 {
-	return vec4(0.0,0.0,0.0,0.0);
+	vec4 normal = q - sphere.position;
+	mat4 invTrans = InvertMatrix( transpose( Scale(sphere.scale) ), invTrans);
+	normal.w = 0;
+	return normalize(invTrans*normal);
 }
 
 // -------------------------------------------------------------------
@@ -347,25 +351,56 @@ vec4 trace(const Ray& ray, int step)
 
 	if ( status.type == LIGHT_SOURCE ) return(status.light->color);
 	if ( status.type == NO_INTERSECTION ) return(g_bgcolor);
-	/*
+	
+	pixelColor = status.sphere->color * status.sphere->Ka * g_ambient;
+
+	normal_n = normal(point_q, *status.sphere);
+
 	Ray rt_r;
-	normal_n = normal(point_q, status.sphere);
 	rt_r.origin = point_q; rt_r.dir = normal_n;
-	r = reflect(rt_r);
-	t = transmit(rt_r);
+	//r = reflect(rt_r);
+	//t = transmit(rt_r);
 
+	vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
-	Ray reflect_r, transmit_r;
-	reflect_r.origin = point_q; reflect_r.dir = r;
-	transmit_r.origin = point_q; transmit_r.dir = t;
-	vec4 local, reflected, transmitted;
-	local = phong(rt_r, r);
-	reflected = trace(reflect_r, step+1);
-	transmitted = trace(transmit_r, step+1);
+	int i;
+	for (i = 0; i < iL; i++)
+	{
+		Ray l_ray;
+		l_ray.origin = g_lights[i].position;
+		l_ray.dir =  point_q - g_lights[i].position;
 
-	return(local + transmitted + reflected);
-	*/
-	return (status.sphere->color * g_ambient);
+		float l_proj = dot( l_ray.dir, normal_n );
+		//if ( l_proj <= 0.0f ) continue;
+		float l_dist = dot( l_ray.dir, l_ray.dir );
+		//if ( l_dist == 0.0f ) continue;
+		l_proj = (1.0f/sqrtf(l_dist)) * l_proj;
+		l_ray.dir = (1.0f/sqrtf(l_dist)) * l_ray.dir;
+
+		Ray d_ray;
+		d_ray.origin = point_q;
+		d_ray.dir =  g_lights[i].position - point_q;
+
+		float d_proj = dot( d_ray.dir, normal_n );
+		if ( d_proj <= 0.0f ) continue;
+		float d_dist = dot( d_ray.dir, d_ray.dir );
+		if ( d_dist == 0.0f ) continue;
+		d_proj = (1.0f/sqrtf(d_dist)) * d_proj;
+		d_ray.dir = (1.0f/sqrtf(d_dist)) * d_ray.dir;
+
+		Intersection l_status;
+		intersect(l_ray, l_status);
+		if ( l_status.sphere == status.sphere)
+		{
+			DEBUG("LIGHTING HIT");
+			diffuse += dot(d_ray.dir, normal_n) * g_lights[i].color
+			         * status.sphere->color;
+		}
+	}
+
+	pixelColor += diffuse*status.sphere->Kd;
+	
+	return (pixelColor);
 }
 
 vec4 getDir(int ix, int iy)
