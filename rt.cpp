@@ -36,7 +36,7 @@ struct Sphere
 {
 	string name;
 	vec4 position;
-	vec4 scale;
+	vec3 scale;
 	vec4 color;
 	float Ka;
 	float Kd;
@@ -64,8 +64,8 @@ struct Intersection
 
 	IntersectionT type;
 	union {
-		Light light;
-		Sphere sphere;
+		Light *light;
+		Sphere *sphere;
 	};
 };
 
@@ -104,6 +104,14 @@ vec4 toVec4(const string& s1, const string& s2, const string& s3)
     return result;
 }
 
+vec3 toVec3(const string& s1, const string& s2, const string& s3)
+{
+	stringstream ss(s1 + " " + s2 + " " + s3);
+	vec3 result;
+	ss >> result.x >> result.y >> result.z;
+	return result;
+}
+
 float toFloat(const string& s)
 {
     stringstream ss(s);
@@ -135,7 +143,7 @@ void parseLine(const vector<string>& vs)
 	{
 		g_spheres[iS].name = vs[1];
 		g_spheres[iS].position = toVec4(vs[2],vs[3],vs[4]);
-		g_spheres[iS].scale = toVec4(vs[5],vs[6],vs[7]);
+		g_spheres[iS].scale = toVec3(vs[5],vs[6],vs[7]);
 		g_spheres[iS].color = toVec4(vs[8], vs[9], vs[10]);
 		g_spheres[iS].Ka = toFloat(vs[11]);
 		g_spheres[iS].Kd = toFloat(vs[12]);
@@ -272,9 +280,52 @@ vec4 normal(const vec4& q, const Sphere& sphere)
 // -------------------------------------------------------------------
 // Intersection routine
 
-vec4 intersect(const Ray& ray, Intersection& intersection)
+vec4 intersect(const Ray& ray, Intersection& status)
 {
-	return vec4(0.0,0.0,0.0,0.0);
+	float distance = 1000.0;
+	vec4 intPoint;
+
+	status.type = NO_INTERSECTION;
+
+	int i;
+	for (i = 0; i < iS; i++)
+	{
+		vec4 toSphere = g_spheres[i].position - ray.origin;
+
+		mat4 invTrans;
+		InvertMatrix( Scale(g_spheres[i].scale), invTrans);
+
+		vec4 S = invTrans * toSphere;
+		vec4 C = invTrans * ray.dir;
+
+		float a = dot(C, C);
+		float b = dot(S, C);
+		float c = dot(S, S) - 1;
+
+		if( (b*b - a*c) < 0 ) continue;
+
+		float root = sqrtf(b*b - a*c)/a;
+		float soln1 = b/a - root;
+		float soln2 = b/a + root;
+
+		if ( (soln1 > 1.0f) && (soln1 < soln2) && (soln1 < distance) )
+		{
+			distance = soln1;
+			intPoint = ray.origin + distance*ray.dir;
+			status.type = SPHERE;
+			status.sphere = &g_spheres[i];
+		}
+		else if ( (soln2 > 1.0f) && (soln2 < soln1) && (soln2 < distance) )
+		{
+			distance = soln2;
+			intPoint = ray.origin + distance*ray.dir;
+			status.type = SPHERE;
+			status.sphere = &g_spheres[i];
+		}
+	}
+
+	if ( status.type != NO_INTERSECTION ) return intPoint;
+	else return vec4(0.0,0.0,0.0,1.0);
 }
 
 // -------------------------------------------------------------------
@@ -292,10 +343,9 @@ vec4 trace(const Ray& ray, int step)
 	if ( step > max ) return (g_bgcolor);
 
 	Intersection status;
-	status.type = NO_INTERSECTION;
 	point_q = intersect(ray, status);
 
-	if ( status.type == LIGHT_SOURCE ) return(status.light.color);
+	if ( status.type == LIGHT_SOURCE ) return(status.light->color);
 	if ( status.type == NO_INTERSECTION ) return(g_bgcolor);
 	/*
 	Ray rt_r;
@@ -315,14 +365,14 @@ vec4 trace(const Ray& ray, int step)
 
 	return(local + transmitted + reflected);
 	*/
-	return (status.sphere.color);
+	return (status.sphere->color * g_ambient);
 }
 
 vec4 getDir(int ix, int iy)
 {
     // Return the direction from the origin to pixel (ix, iy), normalized.
-	float x = g_left + ( ix/g_width) * (g_right-g_left);
-	float y = g_bottom + (iy/g_height) * (g_top-g_bottom);
+	float x = g_left + ( ((float) ix)/g_width) * (g_right-g_left);
+	float y = g_bottom + ( ((float) iy)/g_height) * (g_top-g_bottom);
     vec4 dir = vec4(x, y, -g_near, 0.0f);
     return normalize(dir);
 }

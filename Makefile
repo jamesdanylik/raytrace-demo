@@ -1,7 +1,7 @@
 # A generic makefile
 
 CC=g++
-CFLAGS=-c -std=c++11 -Wall -Wno-unused-function
+CFLAGS=-c -ggdb -std=c++11 -Wall -Wno-unused-function
 LDFLAGS=
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
