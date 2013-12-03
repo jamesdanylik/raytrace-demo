@@ -297,7 +297,7 @@ vec4 trace(const Ray& ray, int step)
 
 	if ( status.type == LIGHT_SOURCE ) return(status.light.color);
 	if ( status.type == NO_INTERSECTION ) return(g_bgcolor);
-
+	/*
 	Ray rt_r;
 	normal_n = normal(point_q, status.sphere);
 	rt_r.origin = point_q; rt_r.dir = normal_n;
@@ -314,15 +314,17 @@ vec4 trace(const Ray& ray, int step)
 	transmitted = trace(transmit_r, step+1);
 
 	return(local + transmitted + reflected);
+	*/
+	return (status.sphere.color);
 }
 
 vec4 getDir(int ix, int iy)
 {
-    // TODO: modify this. This should return the direction from the origin
-    // to pixel (ix, iy), normalized.
-    vec4 dir;
-    dir = vec4(0.0f, 0.0f, -1.0f, 0.0f);
-    return dir;
+    // Return the direction from the origin to pixel (ix, iy), normalized.
+	float x = g_left + ( ix/g_width) * (g_right-g_left);
+	float y = g_bottom + (iy/g_height) * (g_top-g_bottom);
+    vec4 dir = vec4(x, y, -g_near, 0.0f);
+    return normalize(dir);
 }
 
 void renderPixel(int ix, int iy)
