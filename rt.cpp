@@ -276,9 +276,11 @@ vec4 transmit(const Ray& ray)
 vec4 normal(const vec4& q, const Sphere& sphere)
 {
 	vec4 normal = q - sphere.position;
-	mat4 invTrans = InvertMatrix( transpose( Scale(sphere.scale) ), invTrans);
+	mat4 trans = Scale(sphere.scale);
+	mat4 invTrans;
+	InvertMatrix(transpose(trans), invTrans);
 	normal.w = 0;
-	return normalize(invTrans*normal);
+	return normalize(invTrans*invTrans*normal);
 }
 
 // -------------------------------------------------------------------
@@ -337,10 +339,8 @@ vec4 intersect(const Ray& ray, Intersection& status)
 
 vec4 trace(const Ray& ray, int step)
 {
-	vec4 local_c, reflected_c, transmitted_c;
-	vec4 point_q, r, t;
+	vec4 point_q;
 	vec4 normal_n;
-	
 	vec4 pixelColor;
 
 	int max = 4;
@@ -356,48 +356,28 @@ vec4 trace(const Ray& ray, int step)
 
 	normal_n = normal(point_q, *status.sphere);
 
-	Ray rt_r;
-	rt_r.origin = point_q; rt_r.dir = normal_n;
-	//r = reflect(rt_r);
-	//t = transmit(rt_r);
-
-	vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	vec4 diffuse = vec4( 0.0, 0.0, 0.0, 0.0);
+	//vec4 specular = vec4( 0.0, 0.0, 0.0, 0.0);
 
 	int i;
 	for (i = 0; i < iL; i++)
 	{
-		Ray l_ray;
-		l_ray.origin = g_lights[i].position;
-		l_ray.dir =  point_q - g_lights[i].position;
-
-		float l_proj = dot( l_ray.dir, normal_n );
-		//if ( l_proj <= 0.0f ) continue;
-		float l_dist = dot( l_ray.dir, l_ray.dir );
-		//if ( l_dist == 0.0f ) continue;
-		l_proj = (1.0f/sqrtf(l_dist)) * l_proj;
-		l_ray.dir = (1.0f/sqrtf(l_dist)) * l_ray.dir;
-
-		Ray d_ray;
-		d_ray.origin = point_q;
-		d_ray.dir =  g_lights[i].position - point_q;
-
-		float d_proj = dot( d_ray.dir, normal_n );
-		if ( d_proj <= 0.0f ) continue;
-		float d_dist = dot( d_ray.dir, d_ray.dir );
-		if ( d_dist == 0.0f ) continue;
-		d_proj = (1.0f/sqrtf(d_dist)) * d_proj;
-		d_ray.dir = (1.0f/sqrtf(d_dist)) * d_ray.dir;
+		Ray light_ray;
+		light_ray.origin = point_q;
+		light_ray.dir = normalize(g_lights[i].position - point_q);
 
 		Intersection l_status;
-		intersect(l_ray, l_status);
-		if ( l_status.sphere == status.sphere)
+		intersect(light_ray, l_status);
+
+		if ( l_status.type == NO_INTERSECTION )
 		{
-			DEBUG("LIGHTING HIT");
-			diffuse += dot(d_ray.dir, normal_n) * g_lights[i].color
+			float light_proj = dot(normal_n, light_ray.dir);
+			if ( light_proj <= 0.0f ) continue;
+
+			diffuse += dot(normal_n, light_ray.dir) * g_lights[i].color
 			         * status.sphere->color;
 		}
 	}
-
 	pixelColor += diffuse*status.sphere->Kd;
 	
 	return (pixelColor);
