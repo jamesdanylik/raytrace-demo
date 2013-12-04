@@ -55,7 +55,7 @@ struct Light
 
 enum IntersectionT
 {
-	LIGHT_SOURCE, NO_INTERSECTION, SPHERE
+	LIGHT_SOURCE, NO_INTERSECTION, SPHERE, HOLLOW_SPHERE
 };
 
 struct Intersection
@@ -283,6 +283,7 @@ vec4 normal(const vec4& q, const Sphere& sphere)
 	return normalize(invTrans*invTrans*normal);
 }
 
+
 // -------------------------------------------------------------------
 // Intersection routine
 
@@ -328,6 +329,20 @@ vec4 intersect(const Ray& ray, Intersection& status)
 			status.type = SPHERE;
 			status.sphere = &g_spheres[i];
 		}
+		else if ( (soln1 < 0.625f) && (soln1 > 0.0f) && (soln1 < soln2) && (soln1 < distance) )
+		{
+			distance = soln1;
+			intPoint = ray.origin + distance*ray.dir;
+			status.type = HOLLOW_SPHERE;
+			status.sphere = &g_spheres[i];
+		}
+		else if ( (soln2 < 0.625f) && (soln2 > 0.0f) && (soln2 < soln1) && (soln2 < distance) )
+		{
+			distance = soln2;
+			intPoint = ray.origin + distance*ray.dir;
+			status.type = HOLLOW_SPHERE;
+			status.sphere = &g_spheres[i];
+		}
 	}
 
 	if ( status.type != NO_INTERSECTION ) return intPoint;
@@ -353,11 +368,11 @@ vec4 trace(const Ray& ray, int step)
 	if ( status.type == NO_INTERSECTION ) return(g_bgcolor);
 	
 	pixelColor = status.sphere->color * status.sphere->Ka * g_ambient;
-
+	
 	normal_n = normal(point_q, *status.sphere);
 
 	vec4 diffuse = vec4( 0.0, 0.0, 0.0, 0.0);
-	//vec4 specular = vec4( 0.0, 0.0, 0.0, 0.0);
+	vec4 specular = vec4( 0.0, 0.0, 0.0, 0.0);
 
 	int i;
 	for (i = 0; i < iL; i++)
@@ -376,9 +391,19 @@ vec4 trace(const Ray& ray, int step)
 
 			diffuse += dot(normal_n, light_ray.dir) * g_lights[i].color
 			         * status.sphere->color;
+
+			float view_proj = dot(normal_n, ray.dir);
+			vec4 blinn = light_ray.dir - ray.dir;
+			float spec = dot(blinn, blinn);
+			if ( spec != 0.0f )
+			{
+				spec = 1.0/(sqrtf(spec))*fmax(light_proj-view_proj, 0.0f);
+				spec = powf(spec, status.sphere->n);
+				specular += spec * g_lights[i].color;
+			}
 		}
 	}
-	pixelColor += diffuse*status.sphere->Kd;
+	pixelColor += diffuse*status.sphere->Kd + specular*status.sphere->Ks;
 	
 	return (pixelColor);
 }
