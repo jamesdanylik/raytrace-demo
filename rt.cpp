@@ -392,14 +392,15 @@ vec4 trace(const Ray& ray, int step)
 			diffuse += dot(normal_n, light_ray.dir) * g_lights[i].color
 			         * status.sphere->color;
 
+
 			float view_proj = dot(normal_n, ray.dir);
 			vec4 blinn = light_ray.dir - ray.dir;
-			float spec = dot(blinn, blinn);
-			if ( spec != 0.0f )
+			float spec_f = dot( blinn, blinn);
+			if ( spec_f != 0.0 )
 			{
-				spec = 1.0/(sqrtf(spec))*fmax(light_proj-view_proj, 0.0f);
-				spec = powf(spec, status.sphere->n);
-				specular += spec * g_lights[i].color;
+				spec_f = 1.0/sqrtf(spec_f)*fmax(light_proj-view_proj,0.0f);
+				spec_f = powf(spec_f, status.sphere->n);
+				specular += spec_f * spec_f * spec_f * g_lights[i].color;
 			}
 		}
 	}
