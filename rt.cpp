@@ -260,9 +260,9 @@ void loadedSceneInfo()
 
 bool colorOOR(const vec4& color)
 {
-	if ( 0.0 > color.x || color.x > 255.0
-	  || 0.0 > color.y || color.y >= 255.0
-	  || 0.0 > color.z || color.z > 255.0
+	if ( 0.0 > color.x || color.x > 1.0
+	  || 0.0 > color.y || color.y > 1.0
+	  || 0.0 > color.z || color.z > 1.0
 	  || 1.0 == color.w )
 		return true;
 	else
@@ -325,7 +325,7 @@ vec4 intersect(const Ray& ray, Intersection& status)
 			status.type = SPHERE;
 			status.sphere = &g_spheres[i];
 		}
-		else if ( (soln1 < 0.625f) && (soln1 > 0.0f) && (soln1 < soln2)
+		else if ( (soln1 < 1.0f) && (soln1 > 0.0f) && (soln1 < soln2)
 		       && (soln1 < distance) )
 		{
 			distance = soln1;
@@ -333,7 +333,7 @@ vec4 intersect(const Ray& ray, Intersection& status)
 			status.type = HOLLOW_SPHERE;
 			status.sphere = &g_spheres[i];
 		}
-		else if ( (soln2 < 0.625f) && (soln2 > 0.0f) && (soln2 < soln1)
+		else if ( (soln2 < 1.0f) && (soln2 > 0.0f) && (soln2 < soln1)
 		       && (soln2 < distance) )
 		{
 			distance = soln2;
@@ -356,7 +356,7 @@ vec4 trace(Ray& ray, int step)
 	vec4 normal_n;
 	vec4 pixelColor;
 
-	int max = 4;
+	int max = 5;
 	if ( step > max ) return (g_bgcolor);
 
 	Intersection status;
@@ -406,13 +406,12 @@ vec4 trace(Ray& ray, int step)
 	pixelColor += diffuse*status.sphere->Kd + specular*status.sphere->Ks;
 
 	float reflect_f = 2.0f * dot(normal_n, ray.dir);
-	ray.origin = point_q;
 	ray.dir = normalize(ray.dir - reflect_f*normal_n);
-	ray.origin = ray.origin + 0.0*ray.dir;
+	ray.origin = point_q;
 	vec4 reflection = trace(ray,step+1);
-	if (!colorOOR(pixelColor+reflection*status.sphere->Kr))
+	if (!colorOOR(reflection*status.sphere->Kr) && reflection != g_bgcolor)
 		pixelColor += reflection*status.sphere->Kr;
-	
+
 	return (pixelColor);
 }
 
